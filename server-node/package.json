@@ -5,7 +5,10 @@
   "main": "index.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "nodemon server.js"
+    "dev": "nodemon server.js",
+    "start:node": "node app.js",
+    "start:spring": "cd ../backend && ./mvnw spring-boot:run",
+    "start:all": "concurrently \"npm run start:node\" \"npm run start:spring\""
   },
   "keywords": [],
   "author": "",
