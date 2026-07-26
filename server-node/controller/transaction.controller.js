@@ -2,9 +2,6 @@ const Transaction = require('../models/Transaction.model')
 
 const addTransaction = async (req, res) => {
   try {
-    console.log('req.user:', req.user)        // see what JWT decoded
-    console.log('req.body:', req.body)        // see what body contains
-
     const { amount, category, description, date, type } = req.body
     const userId = req.user.sub
 
