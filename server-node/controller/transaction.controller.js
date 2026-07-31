@@ -4,13 +4,7 @@ const Transaction = require('../models/Transaction.model')
 const addTransaction = async (req, res) => {
   try {
     const { amount, category, description, date, type } = req.body
-    const userId = req.user.sub
-
-    if (!amount || !description) {
-      return res.status(400).json({ 
-        error: 'amount and description are required' 
-      })
-    }
+    const userId = req.user.sub // Extracted from JWT token
 
     const transaction = new Transaction({
       userId,
@@ -21,13 +15,13 @@ const addTransaction = async (req, res) => {
       type: type || 'expense'
     })
 
-    const saved = await transaction.save()
+    const saved = await transaction.save() // Saves to MongoDB
     return res.status(201).json(saved)
-
   } catch (err) {
     return res.status(500).json({ error: err.message })
   }
 }
+
 
 // Get all transactions for logged in user
 const getTransactions = async (req, res) => {
