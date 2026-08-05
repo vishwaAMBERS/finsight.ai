@@ -1,35 +1,56 @@
 const Transaction = require('../models/Transaction.model')
+const { categorizeTransaction } = require('../services/gemini.service')
 
-// Add a new transaction
 const addTransaction = async (req, res) => {
   try {
-    const { amount, category, description, date, type } = req.body
-    const userId = req.user.sub // Extracted from JWT token
+    const { amount, description, date, type, category } = req.body
+    const userId = req.user.sub
+
+    if (!amount || !description) {
+      return res.status(400).json({
+        error: 'amount and description are required'
+      })
+    }
+
+    // If user provided a category use it
+    // Otherwise ask Gemini to categorize automatically
+    let finalCategory = category
+
+    if (!category || category === 'auto') {
+      console.log(`🤖 Asking Gemini to categorize: "${description}"`)
+      finalCategory = await categorizeTransaction(description)
+      console.log(`✅ Gemini categorized as: ${finalCategory}`)
+    }
 
     const transaction = new Transaction({
       userId,
       amount,
-      category: category || 'other',
+      category: finalCategory,
       description,
       date: date || Date.now(),
       type: type || 'expense'
     })
 
-    const saved = await transaction.save() // Saves to MongoDB
-    return res.status(201).json(saved)
+    const saved = await transaction.save()
+
+    // Return saved transaction with aiCategorized flag
+    return res.status(201).json({
+      ...saved.toObject(),
+      aiCategorized: !category || category === 'auto'
+    })
+
   } catch (err) {
+    console.log('Error adding transaction:', err.message)
     return res.status(500).json({ error: err.message })
   }
 }
 
-
-// Get all transactions for logged in user
+// Keep all other functions exactly the same
 const getTransactions = async (req, res) => {
   try {
     const userId = req.user.sub
     const { category, type, limit = 20, page = 1 } = req.query
 
-    // Build filter
     const filter = { userId }
     if (category) filter.category = category
     if (type) filter.type = type
@@ -56,7 +77,6 @@ const getTransactions = async (req, res) => {
   }
 }
 
-// Get single transaction by ID
 const getTransactionById = async (req, res) => {
   try {
     const userId = req.user.sub
@@ -68,7 +88,6 @@ const getTransactionById = async (req, res) => {
       return res.status(404).json({ error: 'Transaction not found' })
     }
 
-    // Make sure user can only see their own transactions
     if (transaction.userId !== userId) {
       return res.status(403).json({ error: 'Not authorized' })
     }
@@ -80,7 +99,6 @@ const getTransactionById = async (req, res) => {
   }
 }
 
-// Delete a transaction
 const deleteTransaction = async (req, res) => {
   try {
     const userId = req.user.sub
@@ -104,17 +122,14 @@ const deleteTransaction = async (req, res) => {
   }
 }
 
-// Get monthly summary by category
 const getSummary = async (req, res) => {
   try {
     const userId = req.user.sub
 
-    // Get start and end of current month
     const now = new Date()
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
     const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0)
 
-    // Category breakdown for expenses
     const categoryBreakdown = await Transaction.aggregate([
       {
         $match: {
@@ -133,12 +148,10 @@ const getSummary = async (req, res) => {
       { $sort: { total: -1 } }
     ])
 
-    // Total spent this month
     const totalSpent = categoryBreakdown.reduce(
       (sum, cat) => sum + cat.total, 0
     )
 
-    // Total income this month
     const incomeResult = await Transaction.aggregate([
       {
         $match: {
@@ -148,18 +161,14 @@ const getSummary = async (req, res) => {
         }
       },
       {
-        $group: {
-          _id: null,
-          total: { $sum: '$amount' }
-        }
+        $group: { _id: null, total: { $sum: '$amount' } }
       }
     ])
 
-    const totalIncome = incomeResult.length > 0 
-      ? incomeResult[0].total 
+    const totalIncome = incomeResult.length > 0
+      ? incomeResult[0].total
       : 0
 
-    // Daily spending for chart (last 30 days)
     const last30Days = new Date()
     last30Days.setDate(last30Days.getDate() - 30)
 

@@ -18,13 +18,18 @@ public class UserController {
 
     @GetMapping("/me")
     public ResponseEntity<?> getMe(
-            @RequestHeader("Authorization") String authHeader) {
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
         try {
+            if (authHeader == null || !authHeader.toLowerCase().startsWith("bearer ")) {
+                return ResponseEntity.status(401).body(
+                    Map.of("error", "Authorization token missing or invalid")
+                );
+            }
             // Extract token from header
-            String token = authHeader.split(" ")[1];
+            String token = authHeader.substring(7).trim();
             String userId = jwtService.extractUserId(token);
 
-            // Find user in MySQL
+            // Find user in DB
             User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
@@ -48,10 +53,15 @@ public class UserController {
 
     @PutMapping("/me")
     public ResponseEntity<?> updateMe(
-            @RequestHeader("Authorization") String authHeader,
+            @RequestHeader(value = "Authorization", required = false) String authHeader,
             @RequestBody Map<String, Object> updates) {
         try {
-            String token = authHeader.split(" ")[1];
+            if (authHeader == null || !authHeader.toLowerCase().startsWith("bearer ")) {
+                return ResponseEntity.status(401).body(
+                    Map.of("error", "Authorization token missing or invalid")
+                );
+            }
+            String token = authHeader.substring(7).trim();
             String userId = jwtService.extractUserId(token);
 
             User user = userRepository.findById(userId)

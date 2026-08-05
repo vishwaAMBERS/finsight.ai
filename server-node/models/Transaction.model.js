@@ -6,7 +6,7 @@ const TransactionSchema = new mongoose.Schema({
   category: { type: String, default: 'other' },
   description: { type: String, required: true, trim: true },
   date: { type: Date, default: Date.now },
-  type: { type: String, enum: ['expenses', 'income'], default: 'expenses' }
+  type: { type: String, enum: ['expense', 'expenses', 'income'], default: 'expense' }
 }, { timestamps: true })
 
 module.exports = mongoose.model('Transaction', TransactionSchema)

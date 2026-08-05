@@ -1,10 +1,15 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { getMe } from '../services/springApi'
-import { getSummary, getTransactions, 
-         addTransaction, deleteTransaction } from '../services/nodeApi'
-import { BarChart, Bar, XAxis, YAxis, 
-         Tooltip, ResponsiveContainer } from 'recharts'
+import AiAdvisor from '../components/AiAdvisor'
+import {
+  getSummary, getTransactions,
+  addTransaction, deleteTransaction
+} from '../services/nodeApi'
+import {
+  BarChart, Bar, XAxis, YAxis,
+  Tooltip, ResponsiveContainer
+} from 'recharts'
 
 export default function Dashboard() {
   const { user, logoutUser } = useAuth()
@@ -39,24 +44,24 @@ export default function Dashboard() {
   }
 
   const [saving, setSaving] = useState(false)
-const [error, setError] = useState('')
+  const [error, setError] = useState('')
 
- const handleAddTransaction = async (e) => {
-  e.preventDefault()
-  
-  const amount = parseFloat(form.amount)
-  setSaving(true)
-  try {
-    await addTransaction({ ...form, amount })
-    setForm({ amount: '', description: '', category: 'food', type: 'expense' })
-    setShowForm(false)
-    loadData() // Refetches transaction history & analytics from MongoDB
-  } catch (err) {
-    setError(err.response?.data?.message || 'Failed to add transaction.')
-  } finally {
-    setSaving(false)
+  const handleAddTransaction = async (e) => {
+    e.preventDefault()
+
+    const amount = parseFloat(form.amount)
+    setSaving(true)
+    try {
+      await addTransaction({ ...form, amount })
+      setForm({ amount: '', description: '', category: 'food', type: 'expense' })
+      setShowForm(false)
+      loadData() // Refetches transaction history & analytics from MongoDB
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to add transaction.')
+    } finally {
+      setSaving(false)
+    }
   }
-}
 
   const handleDelete = async (id) => {
     if (!window.confirm('Delete this transaction?')) return
@@ -137,11 +142,10 @@ const [error, setError] = useState('')
 
           <div className="bg-gray-900 rounded-xl p-6 border border-gray-800">
             <p className="text-gray-400 text-sm">Savings</p>
-            <p className={`text-3xl font-bold mt-1 ${
-              (summary?.savings || 0) >= 0 
-                ? 'text-blue-400' 
+            <p className={`text-3xl font-bold mt-1 ${(summary?.savings || 0) >= 0
+                ? 'text-blue-400'
                 : 'text-red-400'
-            }`}>
+              }`}>
               ₹{summary?.savings?.toLocaleString() || 0}
             </p>
             <p className="text-gray-500 text-xs mt-1">This month</p>
@@ -154,25 +158,25 @@ const [error, setError] = useState('')
           {chartData.length > 0 ? (
             <ResponsiveContainer width="100%" height={250}>
               <BarChart data={chartData}>
-                <XAxis 
-                  dataKey="name" 
-                  stroke="#6b7280" 
+                <XAxis
+                  dataKey="name"
+                  stroke="#6b7280"
                   fontSize={12}
                 />
-                <YAxis 
-                  stroke="#6b7280" 
+                <YAxis
+                  stroke="#6b7280"
                   fontSize={12}
                   tickFormatter={(v) => `₹${v}`}
                 />
                 <Tooltip
-                  contentStyle={{ 
-                    backgroundColor: '#111827', 
+                  contentStyle={{
+                    backgroundColor: '#111827',
                     border: '1px solid #374151',
                     borderRadius: '8px'
                   }}
                   formatter={(value) => [`₹${value}`, 'Amount']}
                 />
-                <Bar dataKey="amount" fill="#3b82f6" radius={[4,4,0,0]} />
+                <Bar dataKey="amount" fill="#3b82f6" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           ) : (
@@ -180,6 +184,15 @@ const [error, setError] = useState('')
               No transactions yet. Add one below.
             </div>
           )}
+        </div>
+
+        {/* AI Advisor */}
+        <div className="bg-gray-900 rounded-xl p-6 border border-gray-800 mb-8">
+          <div className="flex items-center gap-2 mb-4">
+            <span className="text-xl">🤖</span>
+            <h2 className="text-lg font-semibold">AI Financial Advisor</h2>
+          </div>
+          <AiAdvisor />
         </div>
 
         {/* Transactions */}
@@ -200,8 +213,8 @@ const [error, setError] = useState('')
 
           {/* Add Transaction Form */}
           {showForm && (
-            <form onSubmit={handleAddTransaction} 
-                  className="bg-gray-800 rounded-xl p-4 mb-4 
+            <form onSubmit={handleAddTransaction}
+              className="bg-gray-800 rounded-xl p-4 mb-4 
                            grid grid-cols-2 gap-3">
               {error && (
                 <div className="col-span-2 bg-red-950/60 border border-red-800 text-red-400 text-sm px-3 py-2 rounded-lg">
@@ -212,7 +225,7 @@ const [error, setError] = useState('')
                 type="number"
                 placeholder="Amount (₹)"
                 value={form.amount}
-                onChange={e => setForm({...form, amount: e.target.value})}
+                onChange={e => setForm({ ...form, amount: e.target.value })}
                 required
                 className="bg-gray-700 border border-gray-600 rounded-lg 
                          px-3 py-2 text-white text-sm
@@ -222,7 +235,7 @@ const [error, setError] = useState('')
                 type="text"
                 placeholder="Description"
                 value={form.description}
-                onChange={e => setForm({...form, description: e.target.value})}
+                onChange={e => setForm({ ...form, description: e.target.value })}
                 required
                 className="bg-gray-700 border border-gray-600 rounded-lg 
                          px-3 py-2 text-white text-sm
@@ -230,11 +243,12 @@ const [error, setError] = useState('')
               />
               <select
                 value={form.category}
-                onChange={e => setForm({...form, category: e.target.value})}
+                onChange={e => setForm({ ...form, category: e.target.value })}
                 className="bg-gray-700 border border-gray-600 rounded-lg 
-                         px-3 py-2 text-white text-sm
-                         focus:outline-none focus:border-blue-500"
+           px-3 py-2 text-white text-sm
+           focus:outline-none focus:border-blue-500"
               >
+                <option value="auto">🤖 Auto (AI picks category)</option>
                 <option value="food">Food</option>
                 <option value="rent">Rent</option>
                 <option value="entertainment">Entertainment</option>
@@ -247,7 +261,7 @@ const [error, setError] = useState('')
               </select>
               <select
                 value={form.type}
-                onChange={e => setForm({...form, type: e.target.value})}
+                onChange={e => setForm({ ...form, type: e.target.value })}
                 className="bg-gray-700 border border-gray-600 rounded-lg 
                          px-3 py-2 text-white text-sm
                          focus:outline-none focus:border-blue-500"
@@ -276,7 +290,7 @@ const [error, setError] = useState('')
             <div className="space-y-3">
               {transactions.map(tx => (
                 <div key={tx._id}
-                     className="flex items-center justify-between 
+                  className="flex items-center justify-between 
                               bg-gray-800 rounded-lg px-4 py-3">
                   <div className="flex items-center gap-3">
                     <span className={`w-2 h-2 rounded-full 
@@ -292,11 +306,10 @@ const [error, setError] = useState('')
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
-                    <span className={`font-semibold ${
-                      tx.type === 'income' 
-                        ? 'text-green-400' 
+                    <span className={`font-semibold ${tx.type === 'income'
+                        ? 'text-green-400'
                         : 'text-red-400'
-                    }`}>
+                      }`}>
                       {tx.type === 'income' ? '+' : '-'}₹{tx.amount}
                     </span>
                     <button
