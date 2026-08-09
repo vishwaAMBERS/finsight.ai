@@ -3,7 +3,7 @@ const Transaction = require('../models/Transaction.model')
 
 const getAdvice = async (req, res) => {
   try {
-    const userId = req.user.sub
+    const userId = req.user?.sub || req.user?.userId || req.user?.id
     const { message } = req.body
 
     if (!message) {

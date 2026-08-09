@@ -25,7 +25,7 @@ export default function Login() {
       loginUser(token, { userId, name, email, role })
       navigate('/dashboard')
     } catch (err) {
-      setError('Invalid email or password')
+      setError(err.response?.data?.error || err.response?.data?.message || err.message || 'Invalid email or password')
     } finally {
       setLoading(false)
     }

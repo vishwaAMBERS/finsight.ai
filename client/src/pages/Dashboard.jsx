@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { getMe } from '../services/springApi'
 import AiAdvisor from '../components/AiAdvisor'
+import UploadStatement from '../components/UploadStatement'
 import {
   getSummary, getTransactions,
   addTransaction, deleteTransaction
@@ -26,18 +27,39 @@ export default function Dashboard() {
     loadData()
   }, [])
 
+  const [fetchError, setFetchError] = useState('')
+
   const loadData = async () => {
+    setFetchError('')
     try {
-      const [profileRes, summaryRes, txRes] = await Promise.all([
+      const results = await Promise.allSettled([
         getMe(),
         getSummary(),
         getTransactions({ limit: 10 })
       ])
-      setProfile(profileRes.data)
-      setSummary(summaryRes.data)
-      setTransactions(txRes.data.transactions)
+      
+      const [profileResult, summaryResult, txResult] = results
+
+      if (profileResult.status === 'fulfilled') {
+        setProfile(profileResult.value.data)
+      }
+
+      if (summaryResult.status === 'fulfilled') {
+        setSummary(summaryResult.value.data)
+      }
+
+      if (txResult.status === 'fulfilled') {
+        setTransactions(txResult.value.data.transactions || [])
+      }
+
+      const rejected = results.filter(r => r.status === 'rejected')
+      if (rejected.length > 0) {
+        const errors = rejected.map(r => r.reason.response?.data?.error || r.reason.response?.data?.message || r.reason.message).join(' | ')
+        setFetchError(`Backend Notice: ${errors}`)
+      }
     } catch (err) {
       console.error('Error loading data:', err)
+      setFetchError('Failed to load dashboard data.')
     } finally {
       setLoading(false)
     }
@@ -57,7 +79,7 @@ export default function Dashboard() {
       setShowForm(false)
       loadData() // Refetches transaction history & analytics from MongoDB
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to add transaction.')
+      setError(err.response?.data?.error || err.response?.data?.message || 'Failed to add transaction.')
     } finally {
       setSaving(false)
     }
@@ -121,6 +143,11 @@ export default function Dashboard() {
       </nav>
 
       <div className="max-w-6xl mx-auto px-6 py-8">
+        {fetchError && (
+          <div className="bg-yellow-900/30 border border-yellow-700 text-yellow-300 px-4 py-3 rounded-lg mb-6 text-sm">
+            ⚠️ {fetchError}
+          </div>
+        )}
 
         {/* Summary Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
@@ -143,8 +170,8 @@ export default function Dashboard() {
           <div className="bg-gray-900 rounded-xl p-6 border border-gray-800">
             <p className="text-gray-400 text-sm">Savings</p>
             <p className={`text-3xl font-bold mt-1 ${(summary?.savings || 0) >= 0
-                ? 'text-blue-400'
-                : 'text-red-400'
+              ? 'text-blue-400'
+              : 'text-red-400'
               }`}>
               ₹{summary?.savings?.toLocaleString() || 0}
             </p>
@@ -194,6 +221,7 @@ export default function Dashboard() {
           </div>
           <AiAdvisor />
         </div>
+        <UploadStatement onSuccess={loadData} />
 
         {/* Transactions */}
         <div className="bg-gray-900 rounded-xl p-6 border border-gray-800">
@@ -307,8 +335,8 @@ export default function Dashboard() {
                   </div>
                   <div className="flex items-center gap-3">
                     <span className={`font-semibold ${tx.type === 'income'
-                        ? 'text-green-400'
-                        : 'text-red-400'
+                      ? 'text-green-400'
+                      : 'text-red-400'
                       }`}>
                       {tx.type === 'income' ? '+' : '-'}₹{tx.amount}
                     </span>

@@ -4,7 +4,7 @@ const { categorizeTransaction } = require('../services/gemini.service')
 const addTransaction = async (req, res) => {
   try {
     const { amount, description, date, type, category } = req.body
-    const userId = req.user.sub
+    const userId = req.user?.sub || req.user?.userId || req.user?.id
 
     if (!amount || !description) {
       return res.status(400).json({
@@ -48,7 +48,7 @@ const addTransaction = async (req, res) => {
 // Keep all other functions exactly the same
 const getTransactions = async (req, res) => {
   try {
-    const userId = req.user.sub
+    const userId = req.user?.sub || req.user?.userId || req.user?.id
     const { category, type, limit = 20, page = 1 } = req.query
 
     const filter = { userId }
@@ -79,7 +79,7 @@ const getTransactions = async (req, res) => {
 
 const getTransactionById = async (req, res) => {
   try {
-    const userId = req.user.sub
+    const userId = req.user?.sub || req.user?.userId || req.user?.id
     const { id } = req.params
 
     const transaction = await Transaction.findById(id)
@@ -101,7 +101,7 @@ const getTransactionById = async (req, res) => {
 
 const deleteTransaction = async (req, res) => {
   try {
-    const userId = req.user.sub
+    const userId = req.user?.sub || req.user?.userId || req.user?.id
     const { id } = req.params
 
     const transaction = await Transaction.findById(id)
@@ -124,7 +124,7 @@ const deleteTransaction = async (req, res) => {
 
 const getSummary = async (req, res) => {
   try {
-    const userId = req.user.sub
+    const userId = req.user?.sub || req.user?.userId || req.user?.id
 
     const now = new Date()
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)

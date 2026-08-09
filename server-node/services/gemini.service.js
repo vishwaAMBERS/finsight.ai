@@ -2,7 +2,21 @@ const { GoogleGenerativeAI } = require('@google/generative-ai')
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
 
 const categorizeTransaction = async (description) => {
+    const descLower = (description || '').toLowerCase()
+
+    if (/swiggy|zomato|restaurant|food|grocer|blinkit|zepto|instamart|cafe|dominos|mcdonalds|starbucks|canteen|diner/.test(descLower)) return 'food'
+    if (/rent|landlord|house|electricity|water bill|maintenance|pg|flat/.test(descLower)) return 'rent'
+    if (/netflix|spotify|prime|hotstar|movie|cinema|bookmyshow|game|playstation|steam/.test(descLower)) return 'entertainment'
+    if (/emi|loan|installment|credit card/.test(descLower)) return 'emi'
+    if (/salary|stipend|payroll|wage|freelance/.test(descLower)) return 'salary'
+    if (/amazon|flipkart|myntra|ajio|zara|shopping|dmart/.test(descLower)) return 'shopping'
+    if (/hospital|pharmacy|doctor|medicine|gym|cult\.fit|clinic|health|apollo/.test(descLower)) return 'health'
+    if (/uber|ola|rapido|petrol|fuel|indianoil|shell|bus|train|irctc|flight|metro|toll|transport/.test(descLower)) return 'transport'
+
     try {
+        if (!process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY === 'your_gemini_api_key_here') {
+            return 'other'
+        }
         const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
         const prompt = `You are a financial transaction categorizer.
     

@@ -24,11 +24,10 @@ public class AuthController {
             BindingResult bindingResult) {
 
         if (bindingResult.hasErrors()) {
-            Map<String, String> errors = new HashMap<>();
-            bindingResult.getFieldErrors().forEach(error ->
-                errors.put(error.getField(), error.getDefaultMessage())
+            String firstError = bindingResult.getFieldErrors().get(0).getDefaultMessage();
+            return ResponseEntity.badRequest().body(
+                Map.of("error", firstError)
             );
-            return ResponseEntity.badRequest().body(errors);
         }
 
         try {

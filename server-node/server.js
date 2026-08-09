@@ -5,7 +5,10 @@ const cors = require('cors')
 
 const app = express()
 
-app.use(cors({ origin: 'http://localhost:5173' }))
+app.use(cors({
+    origin: (origin, callback) => callback(null, true),
+    credentials: true
+}))
 app.use(express.json())
 
 app.get('/', (req, res) => {
@@ -17,10 +20,13 @@ app.get('/', (req, res) => {
 
 const chatRoutes = require('./routes/chat.routes')
 const transactionRoutes = require('./routes/transaction.routes')
+const uploadRoutes = require('./routes/upload.routes')
 
 app.use('/api/chat', chatRoutes)
 app.use('/api/transactions', transactionRoutes)
+app.use('/api/upload', uploadRoutes)
 
+    
 mongoose.connect(process.env.MONGO_URI)
     .then(() => {
         console.log('mongodb connected')

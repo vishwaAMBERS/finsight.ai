@@ -30,7 +30,20 @@ export default function Register() {
       loginUser(token, { userId, name, email, role })
       navigate('/dashboard')
     } catch (err) {
-      setError(err.response?.data?.error || 'Registration failed')
+      const serverErr = err.response?.data
+      let msg = 'Registration failed'
+      if (typeof serverErr === 'string') {
+        msg = serverErr
+      } else if (serverErr?.error) {
+        msg = serverErr.error
+      } else if (serverErr?.message) {
+        msg = serverErr.message
+      } else if (serverErr && typeof serverErr === 'object') {
+        msg = Object.values(serverErr).join(', ')
+      } else if (err.message) {
+        msg = err.message
+      }
+      setError(msg)
     } finally {
       setLoading(false)
     }

@@ -1,4 +1,4 @@
-package com.finsight.server_spring;
+package com.finsight;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
