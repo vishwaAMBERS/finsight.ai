@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useSocket } from '../hooks/useSocket'
 import { useAuth } from '../context/AuthContext'
 import { getMe } from '../services/springApi'
 import AiAdvisor from '../components/AiAdvisor'
@@ -95,6 +96,17 @@ export default function Dashboard() {
     }
   }
 
+  const [alerts, setAlerts] = useState([])
+
+// Socket.io real-time alerts
+useSocket((alertData) => {
+  setAlerts(prev => [alertData, ...prev])
+  // Auto-remove alert after 10 seconds
+  setTimeout(() => {
+    setAlerts(prev => prev.filter(a => a.transactionId !== alertData.transactionId))
+  }, 10000)
+})
+
   const categoryColors = {
     food: 'bg-orange-500',
     rent: 'bg-red-500',
@@ -122,7 +134,43 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white">
+    <>
+      {/* Real-time Fraud Alerts */}
+      {alerts.length > 0 && (
+        <div className="fixed top-4 right-4 z-50 space-y-2 max-w-sm">
+          {alerts.map((alert, i) => (
+            <div key={i} 
+                 className="bg-red-900 border border-red-500 rounded-xl p-4 
+                          shadow-lg animate-pulse">
+              <div className="flex justify-between items-start">
+                <div>
+                  <p className="text-red-300 font-semibold text-sm">
+                    🚨 Suspicious Transaction
+                  </p>
+                  <p className="text-white text-sm mt-1">
+                    {alert.description}
+                  </p>
+                  <p className="text-red-300 text-sm">
+                    ₹{alert.amount} — Score: {(alert.anomalyScore * 100).toFixed(0)}%
+                  </p>
+                  <p className="text-gray-400 text-xs mt-1">
+                    {alert.reason}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setAlerts(prev => 
+                    prev.filter((_, idx) => idx !== i)
+                  )}
+                  className="text-gray-400 hover:text-white ml-2"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      <div className="min-h-screen bg-gray-950 text-white">
 
       {/* Navbar */}
       <nav className="bg-gray-900 border-b border-gray-800 px-6 py-4">
@@ -355,5 +403,6 @@ export default function Dashboard() {
         </div>
       </div>
     </div>
+  </>
   )
 }

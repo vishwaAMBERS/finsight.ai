@@ -1,6 +1,4 @@
-
-
-package com.finsight.config;
+package com.finsight.ai.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

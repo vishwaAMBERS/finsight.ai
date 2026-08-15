@@ -1,5 +1,6 @@
 const Transaction = require('../models/Transaction.model')
 const { categorizeTransaction } = require('../services/gemini.service')
+const { analyzeTransaction } = require('../services/mlBridge.service')
 
 const addTransaction = async (req, res) => {
   try {
@@ -12,16 +13,15 @@ const addTransaction = async (req, res) => {
       })
     }
 
-    // If user provided a category use it
-    // Otherwise ask Gemini to categorize automatically
+    // Step 1 — AI categorization
     let finalCategory = category
-
     if (!category || category === 'auto') {
-      console.log(`🤖 Asking Gemini to categorize: "${description}"`)
+      console.log(`🤖 Gemini categorizing: "${description}"`)
       finalCategory = await categorizeTransaction(description)
-      console.log(`✅ Gemini categorized as: ${finalCategory}`)
+      console.log(`✅ Category: ${finalCategory}`)
     }
 
+    // Step 2 — Save transaction to MongoDB
     const transaction = new Transaction({
       userId,
       amount,
@@ -33,19 +33,54 @@ const addTransaction = async (req, res) => {
 
     const saved = await transaction.save()
 
-    // Return saved transaction with aiCategorized flag
+    // Step 3 — Get user's transaction history for ML
+    const history = await Transaction
+      .find({ userId, type: 'expense' })
+      .sort({ date: -1 })
+      .limit(100)
+      .lean()
+
+    // Step 4 — Run anomaly detection
+    console.log(`🔍 Running anomaly detection...`)
+    const mlResult = await analyzeTransaction(saved, history)
+    console.log(`ML result: score=${mlResult.anomalyScore}, isAnomaly=${mlResult.isAnomaly}`)
+
+    // Step 5 — Update transaction with ML results
+    if (mlResult.isAnomaly) {
+      await Transaction.findByIdAndUpdate(saved._id, {
+        isAnomaly: true,
+        anomalyScore: mlResult.anomalyScore
+      })
+
+      // Step 6 — Emit real-time alert via Socket.io
+      const io = req.app.get('io')
+      if (io) {
+        io.to(userId).emit('alert:anomaly', {
+          transactionId: saved._id,
+          description: saved.description,
+          amount: saved.amount,
+          anomalyScore: mlResult.anomalyScore,
+          reason: mlResult.reason,
+          timestamp: new Date()
+        })
+        console.log(`🚨 Alert emitted to user ${userId}`)
+      }
+    }
+
     return res.status(201).json({
       ...saved.toObject(),
-      aiCategorized: !category || category === 'auto'
+      aiCategorized: !category || category === 'auto',
+      anomalyScore: mlResult.anomalyScore,
+      isAnomaly: mlResult.isAnomaly,
+      anomalyReason: mlResult.reason
     })
 
   } catch (err) {
-    console.log('Error adding transaction:', err.message)
+    console.log('Error:', err.message)
     return res.status(500).json({ error: err.message })
   }
 }
 
-// Keep all other functions exactly the same
 const getTransactions = async (req, res) => {
   try {
     const userId = req.user?.sub || req.user?.userId || req.user?.id
@@ -57,21 +92,19 @@ const getTransactions = async (req, res) => {
 
     const skip = (page - 1) * limit
 
-    const transactions = await Transaction
-      .find(filter)
+    const transactions = await Transaction.find(filter)
       .sort({ date: -1 })
-      .limit(parseInt(limit))
-      .skip(skip)
+      .skip(Number(skip))
+      .limit(Number(limit))
 
     const total = await Transaction.countDocuments(filter)
 
     return res.json({
       transactions,
       total,
-      page: parseInt(page),
-      totalPages: Math.ceil(total / limit)
+      page: Number(page),
+      pages: Math.ceil(total / limit)
     })
-
   } catch (err) {
     return res.status(500).json({ error: err.message })
   }
@@ -93,7 +126,6 @@ const getTransactionById = async (req, res) => {
     }
 
     return res.json(transaction)
-
   } catch (err) {
     return res.status(500).json({ error: err.message })
   }
@@ -116,7 +148,6 @@ const deleteTransaction = async (req, res) => {
 
     await Transaction.findByIdAndDelete(id)
     return res.json({ message: 'Transaction deleted successfully' })
-
   } catch (err) {
     return res.status(500).json({ error: err.message })
   }
@@ -169,38 +200,19 @@ const getSummary = async (req, res) => {
       ? incomeResult[0].total
       : 0
 
-    const last30Days = new Date()
-    last30Days.setDate(last30Days.getDate() - 30)
+    const savings = totalIncome - totalSpent
 
-    const dailySpending = await Transaction.aggregate([
-      {
-        $match: {
-          userId,
-          type: 'expense',
-          date: { $gte: last30Days }
-        }
-      },
-      {
-        $group: {
-          _id: {
-            $dateToString: { format: '%Y-%m-%d', date: '$date' }
-          },
-          total: { $sum: '$amount' }
-        }
-      },
-      { $sort: { _id: 1 } }
-    ])
+    const monthNames = ["January", "February", "March", "April", "May", "June",
+      "July", "August", "September", "October", "November", "December"
+    ]
 
     return res.json({
-      month: now.toLocaleString('default', { month: 'long' }),
-      year: now.getFullYear(),
+      month: `${monthNames[now.getMonth()]} ${now.getFullYear()}`,
       totalSpent,
       totalIncome,
-      savings: totalIncome - totalSpent,
-      categoryBreakdown,
-      dailySpending
+      savings,
+      categoryBreakdown
     })
-
   } catch (err) {
     return res.status(500).json({ error: err.message })
   }
